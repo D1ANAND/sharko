@@ -33,10 +33,17 @@ let address: `0x${string}`;
 
 // Connect wallet
 document.getElementById('connect')!.onclick = async () => {
+  const ethereum = (window as any).ethereum;
+  if (!ethereum?.request) {
+    alert(
+      'No Ethereum wallet found. Install MetaMask, or if you use another wallet, disable other wallet extensions (they can block the provider) and refresh.'
+    );
+    return;
+  }
   try {
     walletClient = createWalletClient({
       chain: arbitrumSepolia,
-      transport: custom(window.ethereum)
+      transport: custom(ethereum)
     });
 
     [address] = await walletClient.requestAddresses();
