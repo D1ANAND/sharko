@@ -1,62 +1,116 @@
-import Database from 'better-sqlite3';
+import { supabase, LeaderboardEntry } from './supabase';
 import { getUserProfile } from './ens';
-
-const db = new Database('prediction.db');
-
-db.exec(`
-  CREATE TABLE IF NOT EXISTS leaderboard (
-    address TEXT PRIMARY KEY,
-    pnl REAL DEFAULT 0,
-    bets INTEGER DEFAULT 0,
-    wins INTEGER DEFAULT 0,
-    losses INTEGER DEFAULT 0,
-    volume REAL DEFAULT 0
-  )
-`);
 
 export class Leaderboard {
   async addBet(address: string, pnlChange: number, won: boolean, amount: number) {
-    const existing = db.prepare('SELECT * FROM leaderboard WHERE address=?').get(address) as any;
-    
-    const newPnL = (existing?.pnl || 0) + pnlChange;
-    const newBets = (existing?.bets || 0) + 1;
-    const newWins = (existing?.wins || 0) + (won ? 1 : 0);
-    const newLosses = (existing?.losses || 0) + (won ? 0 : 1);
-    const newVolume = (existing?.volume || 0) + Math.abs(amount);
-    
-    db.prepare(`
-      INSERT OR REPLACE INTO leaderboard (address, pnl, bets, wins, losses, volume)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(address, newPnL, newBets, newWins, newLosses, newVolume);
+    try {
+      // Fetch existing entry
+      const { data: existing, error: fetchError } = await supabase
+        .from('leaderboard')
+        .select('*')
+        .eq('address', address)
+        .single();
+
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        // PGRST116 is "not found" error, which is okay
+        console.error('Error fetching leaderboard entry:', fetchError);
+        throw fetchError;
+      }
+
+      const newPnL = (existing?.pnl || 0) + pnlChange;
+      const newBets = (existing?.bets || 0) + 1;
+      const newWins = (existing?.wins || 0) + (won ? 1 : 0);
+      const newLosses = (existing?.losses || 0) + (won ? 0 : 1);
+      const newVolume = (existing?.volume || 0) + Math.abs(amount);
+
+      // Upsert the entry
+      const { error: upsertError } = await supabase
+        .from('leaderboard')
+        .upsert({
+          address,
+          pnl: newPnL,
+          bets: newBets,
+          wins: newWins,
+          losses: newLosses,
+          volume: newVolume,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'address'
+        });
+
+      if (upsertError) {
+        console.error('Error upserting leaderboard entry:', upsertError);
+        throw upsertError;
+      }
+    } catch (error) {
+      console.error('Error in addBet:', error);
+      throw error;
+    }
   }
-  
+
   async getTop10() {
-    const raw = db.prepare(`
-      SELECT * FROM leaderboard 
-      ORDER BY pnl DESC 
-      LIMIT 10
-    `).all() as any[];
-    
-    const profiles = await Promise.all(
-      raw.map(async (r) => {
-        const profile = await getUserProfile(r.address);
-        return {
-          ...profile,
-          pnl: r.pnl,
-          bets: r.bets,
-          wins: r.wins,
-          losses: r.losses,
-          winRate: r.bets > 0 ? (r.wins / r.bets * 100).toFixed(1) : '0.0',
-          volume: r.volume
-        };
-      })
-    );
-    
-    return profiles;
+    try {
+      const { data: raw, error } = await supabase
+        .from('leaderboard')
+        .select('*')
+        .order('pnl', { ascending: false })
+        .limit(10);
+
+      if (error) {
+        console.error('Error fetching top 10:', error);
+        throw error;
+      }
+
+      if (!raw || raw.length === 0) {
+        return [];
+      }
+
+      const profiles = await Promise.all(
+        raw.map(async (r: LeaderboardEntry) => {
+          const profile = await getUserProfile(r.address);
+          return {
+            ...profile,
+            pnl: r.pnl,
+            bets: r.bets,
+            wins: r.wins,
+            losses: r.losses,
+            winRate: r.bets > 0 ? (r.wins / r.bets * 100).toFixed(1) : '0.0',
+            volume: r.volume
+          };
+        })
+      );
+
+      return profiles;
+    } catch (error) {
+      console.error('Error in getTop10:', error);
+      return [];
+    }
   }
-  
-  getStats() {
-    return db.prepare('SELECT COUNT(*) as users, SUM(bets) as totalBets, SUM(volume) as totalVolume FROM leaderboard').get();
+
+  async getStats() {
+    try {
+      const { data, error } = await supabase
+        .from('leaderboard')
+        .select('address, bets, volume');
+
+      if (error) {
+        console.error('Error fetching stats:', error);
+        throw error;
+      }
+
+      if (!data || data.length === 0) {
+        return { users: 0, totalBets: 0, totalVolume: 0 };
+      }
+
+      const users = data.length;
+      const totalBets = data.reduce((sum, entry) => sum + (entry.bets || 0), 0);
+      const totalVolume = data.reduce((sum, entry) => sum + (entry.volume || 0), 0);
+
+      return { users, totalBets, totalVolume };
+    } catch (error) {
+      console.error('Error in getStats:', error);
+      return { users: 0, totalBets: 0, totalVolume: 0 };
+    }
   }
 }
 

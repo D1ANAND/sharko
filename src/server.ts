@@ -94,7 +94,7 @@ app.post('/api/settle/:marketId', async (req, res) => {
 app.get('/api/leaderboard', async (req, res) => {
   try {
     const leaders = await leaderboard.getTop10();
-    const stats = leaderboard.getStats();
+    const stats = await leaderboard.getStats();
     res.json({ leaders, stats });
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
@@ -109,8 +109,8 @@ app.post('/api/yellow/relay', (req, res) => {
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  
-  
+
+
 });
 
 // Graceful shutdown
