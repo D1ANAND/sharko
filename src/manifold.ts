@@ -11,10 +11,29 @@ export interface ManifoldMarket {
 
 export async function getMarkets(): Promise<ManifoldMarket[]> {
   try {
-    const resp = await fetch('https://api.manifold.markets/v0/markets?limit=50&order=volume');
-    const data = await resp.json() as any[];
+    const resp = await fetch('https://api.manifold.markets/v0/markets?limit=50');
 
-    return data.map((m: any) => ({
+    if (!resp.ok) {
+      console.error(`Manifold API returned status ${resp.status}`);
+      return [];
+    }
+
+    const data: any = await resp.json();
+
+    // Handle different response structures
+    let markets: any[];
+    if (Array.isArray(data)) {
+      markets = data;
+    } else if (data && typeof data === 'object' && Array.isArray(data.markets)) {
+      markets = data.markets;
+    } else if (data && typeof data === 'object' && Array.isArray(data.data)) {
+      markets = data.data;
+    } else {
+      console.error('Unexpected API response structure:', Object.keys(data || {}));
+      return [];
+    }
+
+    return markets.map((m: any) => ({
       id: m.id,
       question: m.question,
       probability: m.probability || 0.5,

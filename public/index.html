@@ -1,37 +1,148 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Yellow Prediction Markets</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: system-ui; background: #0a0a0a; color: #fff; }
-    .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
-    h1 { font-size: 2rem; }
-    button { background: #fbbf24; color: #000; border: none; padding: 12px 24px; 
-             border-radius: 8px; cursor: pointer; font-weight: 600; }
-    button:hover { background: #f59e0b; }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
-    .user-info { padding: 10px 20px; background: #1a1a1a; border-radius: 8px; }
-    .markets { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; margin: 40px 0; }
-    .market { background: #1a1a1a; padding: 20px; border-radius: 12px; border: 1px solid #333; }
-    .market h3 { font-size: 1.1rem; margin-bottom: 12px; line-height: 1.4; }
-    .market-stats { display: flex; gap: 20px; margin: 12px 0; font-size: 0.9rem; color: #888; }
-    .bet-buttons { display: flex; gap: 10px; margin-top: 16px; }
-    .bet-yes { background: #10b981; }
-    .bet-yes:hover { background: #059669; }
-    .bet-no { background: #ef4444; }
-    .bet-no:hover { background: #dc2626; }
-    .leaderboard { margin-top: 60px; }
-    .leaderboard table { width: 100%; border-collapse: collapse; }
-    .leaderboard th { text-align: left; padding: 12px; background: #1a1a1a; }
-    .leaderboard td { padding: 12px; border-bottom: 1px solid #333; }
-    .rank { font-weight: 600; color: #fbbf24; }
-    .loading { text-align: center; padding: 40px; color: #888; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui;
+      background: #0a0a0a;
+      color: #fff;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 40px;
+    }
+
+    h1 {
+      font-size: 2rem;
+    }
+
+    button {
+      background: #fbbf24;
+      color: #000;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    button:hover {
+      background: #f59e0b;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .user-info {
+      padding: 10px 20px;
+      background: #1a1a1a;
+      border-radius: 8px;
+    }
+
+    .markets {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 20px;
+      margin: 40px 0;
+    }
+
+    .market {
+      background: #1a1a1a;
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid #333;
+    }
+
+    .market h3 {
+      font-size: 1.1rem;
+      margin-bottom: 12px;
+      line-height: 1.4;
+    }
+
+    .market-stats {
+      display: flex;
+      gap: 20px;
+      margin: 12px 0;
+      font-size: 0.9rem;
+      color: #888;
+    }
+
+    .bet-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .bet-yes {
+      background: #10b981;
+    }
+
+    .bet-yes:hover {
+      background: #059669;
+    }
+
+    .bet-no {
+      background: #ef4444;
+    }
+
+    .bet-no:hover {
+      background: #dc2626;
+    }
+
+    .leaderboard {
+      margin-top: 60px;
+    }
+
+    .leaderboard table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .leaderboard th {
+      text-align: left;
+      padding: 12px;
+      background: #1a1a1a;
+    }
+
+    .leaderboard td {
+      padding: 12px;
+      border-bottom: 1px solid #333;
+    }
+
+    .rank {
+      font-weight: 600;
+      color: #fbbf24;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #888;
+    }
   </style>
 </head>
+
 <body>
   <div class="container">
     <header>
@@ -62,127 +173,15 @@
           </tr>
         </thead>
         <tbody id="leaderboard-body">
-          <tr><td colspan="5" class="loading">Loading...</td></tr>
+          <tr>
+            <td colspan="5" class="loading">Loading...</td>
+          </tr>
         </tbody>
       </table>
     </div>
   </div>
 
-  <script type="module">
-    import { 
-      createWalletClient, 
-      custom, 
-      parseEther, 
-      parseAbi, 
-      encodeFunctionData,
-      keccak256,
-      toHex,
-      formatEther
-    } from 'https://esm.sh/viem@2.7.0';
-    import { arbitrumSepolia } from 'https://esm.sh/viem@2.7.0/chains';
-
-    const API_BASE = 'http://localhost:3001';
-    const CUSTODY = 'YOUR_CUSTODY_ADDRESS_HERE'; // UPDATE THIS
-
-    const ABI = parseAbi([
-      'function deposit() payable',
-      'function placeBet(bytes32 marketId, bool side, uint256 amount)',
-      'function claim(bytes32 marketId)',
-      'function withdraw(uint256 amount)',
-      'function getBalance(address user) view returns (uint256)'
-    ]);
-
-    let walletClient, address;
-
-    // Connect wallet
-    document.getElementById('connect').onclick = async () => {
-      try {
-        walletClient = createWalletClient({
-          chain: arbitrumSepolia,
-          transport: custom(window.ethereum)
-        });
-
-        [address] = await walletClient.requestAddresses();
-        
-        document.getElementById('user-info').innerHTML = `${address.slice(0,6)}...${address.slice(-4)}`;
-        document.getElementById('user-info').style.display = 'block';
-        document.getElementById('connect').style.display = 'none';
-
-        // Auto deposit
-        await deposit();
-        
-        loadMarkets();
-        loadLeaderboard();
-      } catch (err) {
-        alert('Connection failed: ' + err.message);
-      }
-    };
-
-    async function deposit() {
-      const hash = await walletClient.sendTransaction({
-        to: CUSTODY,
-        data: encodeFunctionData({ abi: ABI, functionName: 'deposit' }),
-        value: parseEther('0.01')
-      });
-      console.log('Deposited:', hash);
-    }
-
-    async function loadMarkets() {
-      const resp = await fetch(`${API_BASE}/api/markets`);
-      const markets = await resp.json();
-
-      document.getElementById('markets').innerHTML = markets.map(m => `
-        <div class="market">
-          <h3>${m.question}</h3>
-          <div class="market-stats">
-            <span>📊 ${(m.probability * 100).toFixed(0)}%</span>
-            <span>💰 $${m.volume.toFixed(0)}</span>
-          </div>
-          <div class="bet-buttons">
-            <button class="bet-yes" onclick="bet('${m.id}', true)">YES $0.001</button>
-            <button class="bet-no" onclick="bet('${m.id}', false)">NO $0.001</button>
-          </div>
-        </div>
-      `).join('');
-    }
-
-    window.bet = async (marketId, side) => {
-      try {
-        const marketIdBytes = keccak256(toHex(marketId));
-        const data = encodeFunctionData({
-          abi: ABI,
-          functionName: 'placeBet',
-          args: [marketIdBytes, side, parseEther('0.001')]
-        });
-
-        const hash = await walletClient.sendTransaction({ to: CUSTODY, data });
-        alert(`Bet placed! Tx: ${hash.slice(0,10)}...`);
-      } catch (err) {
-        alert('Bet failed: ' + err.message);
-      }
-    };
-
-    async function loadLeaderboard() {
-      const resp = await fetch(`${API_BASE}/api/leaderboard`);
-      const data = await resp.json();
-
-      document.getElementById('leaderboard-body').innerHTML = data.leaders.map((l, i) => `
-        <tr>
-          <td class="rank">#${i+1}</td>
-          <td>${l.ensName}</td>
-          <td style="color:${l.pnl > 0 ? '#10b981' : '#ef4444'}">
-            ${l.pnl > 0 ? '+' : ''}${l.pnl.toFixed(4)} ETH
-          </td>
-          <td>${l.bets}</td>
-          <td>${l.winRate}%</td>
-        </tr>
-      `).join('');
-    }
-
-    // Auto-load on page load
-    loadMarkets();
-    loadLeaderboard();
-    setInterval(loadLeaderboard, 30000);
-  </script>
+  <script type="module" src="./app.ts"></script>
 </body>
+
 </html>
