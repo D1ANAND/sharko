@@ -1,12 +1,13 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import { parseAbi, parseAbiItem, keccak256, toHex } from 'viem';
+import { parseAbi, parseAbiItem, keccak256, toHex, parseEther } from 'viem';
 import { publicClient, walletClient } from './chain';
 import { getMarkets, getMarketResolution } from './manifold';
 import { leaderboard } from './leaderboard';
 import { yellowClient } from './yellow';
 import { supabase } from './supabase';
+import { sessionManager } from './session';
 
 const CUSTODY_ADDRESS = (process.env.CUSTODY_ADDRESS || '0x0') as `0x${string}`;
 
@@ -23,6 +24,20 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', custody: CUSTODY_ADDRESS });
 });
 
+// Fee estimation
+app.get('/api/fees', async (req, res) => {
+  try {
+    const fees = await publicClient.estimateFeesPerGas();
+    res.json({
+      maxFeePerGas: fees.maxFeePerGas.toString(),
+      maxPriorityFeePerGas: (fees.maxPriorityFeePerGas ?? 0n).toString(),
+    });
+  } catch (error) {
+    console.error('Fee estimation error:', error);
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
 // Markets
 app.get('/api/markets', async (req, res) => {
   try {
@@ -35,6 +50,168 @@ app.get('/api/markets', async (req, res) => {
 });
 
 // Track market when bet is placed
+app.post('/api/bet', async (req, res) => {
+  try {
+    const { marketId } = req.body as { marketId: string };
+    if (!marketId) {
+      return res.status(400).json({ error: 'marketId is required' });
+    }
+
+    await supabase
+      .from('tracked_markets')
+      .upsert({ id: marketId }, { onConflict: 'id' });
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('Supabase upsert error:', error);
+    return res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// ========== SESSION / STATE CHANNEL ENDPOINTS ==========
+
+// Open a new session (Yellow state channel)
+app.post('/api/session/open', async (req, res) => {
+  try {
+    const { userAddress, depositAmount } = req.body as { userAddress: string; depositAmount: number };
+
+    if (!userAddress || !depositAmount) {
+      return res.status(400).json({ error: 'userAddress and depositAmount are required' });
+    }
+
+    const session = await sessionManager.openSession(userAddress, depositAmount);
+
+    if (!session) {
+      return res.status(500).json({ error: 'Failed to create session' });
+    }
+
+    return res.json({
+      success: true,
+      session: {
+        id: session.id,
+        balance: session.current_balance,
+        deposit: session.initial_deposit,
+      },
+    });
+  } catch (error) {
+    console.error('Session open error:', error);
+    return res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// Get active session for a user
+app.get('/api/session/:userAddress', async (req, res) => {
+  try {
+    const { userAddress } = req.params;
+    const session = await sessionManager.getActiveSession(userAddress);
+
+    if (!session) {
+      return res.json({ session: null });
+    }
+
+    return res.json({
+      session: {
+        id: session.id,
+        balance: session.current_balance,
+        deposit: session.initial_deposit,
+        totalBetAmount: session.total_bet_amount,
+        status: session.status,
+        openedAt: session.opened_at,
+      },
+    });
+  } catch (error) {
+    console.error('Get session error:', error);
+    return res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// Place a bet within a session (off-chain)
+app.post('/api/session/bet', async (req, res) => {
+  try {
+    const { sessionId, marketId, userAddress, side, amount } = req.body as {
+      sessionId: string;
+      marketId: string;
+      userAddress: string;
+      side: boolean;
+      amount: number;
+    };
+
+    if (!sessionId || !marketId || !userAddress || side === undefined || !amount) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Track the market
+    await supabase
+      .from('tracked_markets')
+      .upsert({ id: marketId }, { onConflict: 'id' });
+
+    // Place bet in session
+    const result = await sessionManager.placeBet(sessionId, marketId, userAddress, side, amount);
+
+    if (!result.success) {
+      return res.status(400).json({ error: result.error || 'Failed to place bet' });
+    }
+
+    return res.json({
+      success: true,
+      betId: result.bet_id,
+      newBalance: result.new_balance,
+    });
+  } catch (error) {
+    console.error('Session bet error:', error);
+    return res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// Close a session and prepare for settlement
+app.post('/api/session/close', async (req, res) => {
+  try {
+    const { sessionId } = req.body as { sessionId: string };
+
+    if (!sessionId) {
+      return res.status(400).json({ error: 'sessionId is required' });
+    }
+
+    const result = await sessionManager.closeSession(sessionId);
+
+    if (!result.success) {
+      return res.status(400).json({ error: result.error || 'Failed to close session' });
+    }
+
+    return res.json({
+      success: true,
+      finalBalance: result.final_balance,
+      message: 'Session marked for closing. Please withdraw your funds on-chain.',
+    });
+  } catch (error) {
+    console.error('Session close error:', error);
+    return res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// Finalize session after on-chain withdrawal
+app.post('/api/session/finalize', async (req, res) => {
+  try {
+    const { sessionId, txHash } = req.body as { sessionId: string; txHash: string };
+
+    if (!sessionId || !txHash) {
+      return res.status(400).json({ error: 'sessionId and txHash are required' });
+    }
+
+    const success = await sessionManager.finalizeSession(sessionId, txHash);
+
+    if (!success) {
+      return res.status(500).json({ error: 'Failed to finalize session' });
+    }
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('Session finalize error:', error);
+    return res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// Track market when bet is placed (legacy endpoint - kept for compatibility)
 app.post('/api/bet', async (req, res) => {
   try {
     const { marketId } = req.body as { marketId: string };
@@ -106,7 +283,11 @@ app.post('/api/settle/:marketId', async (req, res) => {
       }
     }
 
-    // 4. Mark market as settled in tracked_markets
+    // 4. Settle session bets for this market
+    const sessionBetsSettled = await sessionManager.settleBetsForMarket(marketId, resolvedYes);
+    console.log(`Settled ${sessionBetsSettled} session bets`);
+
+    // 5. Mark market as settled in tracked_markets
     await supabase
       .from('tracked_markets')
       .update({
@@ -119,7 +300,8 @@ app.post('/api/settle/:marketId', async (req, res) => {
       success: true,
       hash,
       outcome: resolution.outcome,
-      betsProcessed: bets ? bets.length : 0
+      betsProcessed: bets ? bets.length : 0,
+      sessionBetsSettled,
     });
   } catch (error) {
     console.error('Settlement error:', error);

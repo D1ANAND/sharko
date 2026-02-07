@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { createPublicClient, createWalletClient, http } from 'viem';
-import { arbitrumSepolia } from 'viem/chains';
+import { sepolia } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 
 const ARB_RPC = process.env.ARB_RPC || 'https://sepolia-rollup.arbitrum.io/rpc';
@@ -26,12 +26,12 @@ function normalizePrivateKey(key: string) {
 const ORACLE_KEY = normalizePrivateKey(ORACLE_KEY_RAW) as `0x${string}`;
 
 export const publicClient = createPublicClient({
-  chain: arbitrumSepolia,
+  chain: sepolia,
   transport: http(ARB_RPC),
 });
 
 export const walletClient = createWalletClient({
-  chain: arbitrumSepolia,
+  chain: sepolia,
   account: privateKeyToAccount(ORACLE_KEY),
   transport: http(ARB_RPC),
 });
