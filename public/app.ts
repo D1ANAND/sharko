@@ -18,7 +18,7 @@ declare global {
 }
 
 const API_BASE = 'http://localhost:3001';
-const CUSTODY = import.meta.env.VITE_CUSTODY_ADDRESS as `0x${string}`;
+const CUSTODY = `0x4bA6e7b6ecFDc54d5C56B1f764a261D5F2BFb8da` as `${string}`;
 
 const ABI = parseAbi([
   'function deposit() payable',

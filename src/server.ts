@@ -15,7 +15,7 @@ app.use(express.json());
 app.use(express.static('public'));
 
 // Connect Yellow on startup (commented out for debugging)
-// yellowClient.connect();
+yellowClient.connect();
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -109,8 +109,8 @@ app.post('/api/yellow/relay', (req, res) => {
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`✅ Backend running: http://localhost:${PORT}`);
-  console.log(`   Custody: ${CUSTODY_ADDRESS}`);
+  
+  
 });
 
 // Graceful shutdown
