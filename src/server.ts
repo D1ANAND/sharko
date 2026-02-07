@@ -6,6 +6,7 @@ import { publicClient, walletClient } from './chain';
 import { getMarkets, getMarketResolution } from './manifold';
 import { leaderboard } from './leaderboard';
 import { yellowClient } from './yellow';
+import { supabase } from './supabase';
 
 const CUSTODY_ADDRESS = (process.env.CUSTODY_ADDRESS || '0x0') as `0x${string}`;
 
@@ -33,6 +34,25 @@ app.get('/api/markets', async (req, res) => {
   }
 });
 
+// Track market when bet is placed
+app.post('/api/bet', async (req, res) => {
+  try {
+    const { marketId } = req.body as { marketId: string };
+    if (!marketId) {
+      return res.status(400).json({ error: 'marketId is required' });
+    }
+
+    await supabase
+      .from('tracked_markets')
+      .upsert({ id: marketId }, { onConflict: 'id' });
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('Supabase upsert error:', error);
+    return res.status(500).json({ error: (error as Error).message });
+  }
+});
+
 // Settle market
 app.post('/api/settle/:marketId', async (req, res) => {
   try {
@@ -48,7 +68,7 @@ app.post('/api/settle/:marketId', async (req, res) => {
     const resolvedYes = resolution.outcome === 'YES';
     const marketIdBytes = keccak256(toHex(marketId));
 
-    // Settle on-chain
+    // 1. Call settleMarket on PredictionCustody
     const hash = await walletClient.writeContract({
       address: CUSTODY_ADDRESS,
       abi: parseAbi(['function settleMarket(bytes32 marketId, bool resolvedYes)']),
@@ -59,30 +79,47 @@ app.post('/api/settle/:marketId', async (req, res) => {
     await publicClient.waitForTransactionReceipt({ hash });
     console.log(`Settled tx: ${hash}`);
 
-    // Get all bets from events
-    const logs = await publicClient.getLogs({
-      address: CUSTODY_ADDRESS,
-      event: parseAbiItem('event BetPlaced(bytes32 indexed marketId, address indexed user, bool side, uint256 amount)'),
-      args: { marketId: marketIdBytes },
-      fromBlock: 0n
-    });
+    // 2. Load bets for this market from Supabase
+    const { data: bets, error } = await supabase
+      .from('bets')
+      .select('user_address, side, amount')
+      .eq('market_id', marketId);
 
-    console.log(`Found ${logs.length} bets`);
-
-    // Update leaderboard
-    for (const log of logs) {
-      const { user, side, amount } = log.args;
-      const won = side === resolvedYes;
-      const pnl = won ? Number(amount) / 1e18 : -(Number(amount) / 1e18);
-
-      await leaderboard.addBet(user as string, pnl, won, Number(amount) / 1e18);
+    if (error) {
+      console.error('Error loading bets from Supabase:', error);
+      throw error;
     }
+
+    console.log(`Found ${bets?.length || 0} bets in Supabase`);
+
+    // 3. For each bet, compute PnL and update leaderboard
+    if (bets && bets.length > 0) {
+      for (const b of bets) {
+        const user = b.user_address as string;
+        const side = b.side as boolean;
+        const amount = Number(b.amount); // assume stored as numeric ETH
+
+        const won = side === resolvedYes;
+        const pnl = won ? amount : -amount;
+
+        await leaderboard.addBet(user, pnl, won, amount);
+      }
+    }
+
+    // 4. Mark market as settled in tracked_markets
+    await supabase
+      .from('tracked_markets')
+      .update({
+        settled: true,
+        last_checked: new Date().toISOString()
+      })
+      .eq('id', marketId);
 
     res.json({
       success: true,
       hash,
       outcome: resolution.outcome,
-      betsProcessed: logs.length
+      betsProcessed: bets ? bets.length : 0
     });
   } catch (error) {
     console.error('Settlement error:', error);

@@ -1,0 +1,166 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #0a0a0a;
+  color: #fff;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 40px;
+}
+
+h1 {
+  font-size: 2rem;
+}
+
+h2 {
+  font-size: 1.5rem;
+  margin-bottom: 20px;
+}
+
+button {
+  background: #fbbf24;
+  color: #000;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+
+button:hover {
+  background: #f59e0b;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.user-info {
+  padding: 10px 20px;
+  background: #1a1a1a;
+  border-radius: 8px;
+  font-family: monospace;
+}
+
+.markets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 20px;
+  margin: 40px 0;
+}
+
+.market {
+  background: #1a1a1a;
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid #333;
+  transition: border-color 0.2s;
+}
+
+.market:hover {
+  border-color: #fbbf24;
+}
+
+.market h3 {
+  font-size: 1.1rem;
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+
+.market-stats {
+  display: flex;
+  gap: 20px;
+  margin: 12px 0;
+  font-size: 0.9rem;
+  color: #888;
+}
+
+.bet-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.bet-buttons button {
+  flex: 1;
+}
+
+.bet-yes {
+  background: #10b981;
+  color: #fff;
+}
+
+.bet-yes:hover {
+  background: #059669;
+}
+
+.bet-no {
+  background: #ef4444;
+  color: #fff;
+}
+
+.bet-no:hover {
+  background: #dc2626;
+}
+
+.leaderboard {
+  margin-top: 60px;
+}
+
+.leaderboard table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #1a1a1a;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.leaderboard th {
+  text-align: left;
+  padding: 16px;
+  background: #222;
+  font-weight: 600;
+}
+
+.leaderboard td {
+  padding: 16px;
+  border-bottom: 1px solid #333;
+}
+
+.leaderboard tr:last-child td {
+  border-bottom: none;
+}
+
+.leaderboard tr:hover {
+  background: #222;
+}
+
+.rank {
+  font-weight: 600;
+  color: #fbbf24;
+}
+
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: #888;
+  grid-column: 1 / -1;
+}
