@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
+    "build:frontend": "vite build",
     "dev": "tsx src/server.ts",
     "dev:frontend": "vite",
     "start": "node dist/server.js",
