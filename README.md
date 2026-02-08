@@ -23,7 +23,7 @@ A decentralized prediction market platform built with React, Node.js, Supabase, 
 
 ```bash
 git clone <your-repo>
-cd yellow-manifold-team
+cd sharko
 npm install
 ```
 
