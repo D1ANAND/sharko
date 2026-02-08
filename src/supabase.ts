@@ -17,9 +17,13 @@ export interface LeaderboardEntry {
     wins: number;
     losses: number;
     volume: number;
+    win_rate?: number;      // new
+    rank?: number;          // new
+    last_updated?: string;  // new
     created_at?: string;
     updated_at?: string;
 }
+
 
 export interface TrackedMarket {
     id: string;

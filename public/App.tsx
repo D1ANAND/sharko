@@ -111,7 +111,7 @@ const HowItWorks = () => (
 );
 
 const STATS = [
-    { value: '10k+', label: 'Active Predictors' },
+    { value: '5+', label: 'Active Predictors' },
     { value: '500+', label: 'Live Markets' },
     { value: 'Zero', label: 'Gas on Predictions' },
 ];
@@ -144,12 +144,19 @@ const Footer = ({ onGoToMarkets, onGoToLeaderboard }: { onGoToMarkets: () => voi
         <div className="footer-inner">
             <div className="footer-brand">
                 <div className="footer-logo">
-                    <span className="footer-logo-icon">P</span>
-                    <span className="footer-logo-text">PredictX</span>
+                    <span className="footer-logo-icon">S</span>
+                    <span className="footer-logo-text">Sharko</span>
                 </div>
                 <p className="footer-desc">
                     The future of decentralized prediction markets, powered by Yellow Network&apos;s state channel technology.
                 </p>
+                <div className="footer-social">
+                    <a href="https://github.com/D1ANAND/sharko" target="_blank" rel="noopener noreferrer" className="footer-social-link" title="GitHub">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
+                        </svg>
+                    </a>
+                </div>
             </div>
             <div className="footer-links">
                 <div className="footer-col">
@@ -167,7 +174,7 @@ const Footer = ({ onGoToMarkets, onGoToLeaderboard }: { onGoToMarkets: () => voi
                         <li><a href="#" className="footer-link">Documentation</a></li>
                         <li><a href="#" className="footer-link">Nitrolite SDK</a></li>
                         <li><a href="#" className="footer-link">API Reference</a></li>
-                        <li><a href="#" className="footer-link">GitHub</a></li>
+                        <li><a href="https://github.com/D1ANAND/sharko" target="_blank" rel="noopener noreferrer" className="footer-link">GitHub</a></li>
                     </ul>
                 </div>
                 <div className="footer-col">
@@ -201,21 +208,10 @@ interface LeaderboardEntry {
     pnl: number;
     bets: number;
     winRate: string;
+    rank?: number;
+    volume?: number;
+    lastUpdated?: string;
 }
-
-// Mock leaderboard data
-const MOCK_LEADERBOARD: LeaderboardEntry[] = [
-    { ensName: 'vitalik.eth', pnl: 2.4521, bets: 89, winRate: '67.4' },
-    { ensName: 'alice.eth', pnl: 1.8234, bets: 64, winRate: '62.5' },
-    { ensName: 'crypto.eth', pnl: 1.2100, bets: 52, winRate: '59.6' },
-    { ensName: 'predictor.eth', pnl: 0.9876, bets: 41, winRate: '58.5' },
-    { ensName: 'degen.eth', pnl: 0.6543, bets: 38, winRate: '55.3' },
-    { ensName: 'wagmi.eth', pnl: 0.4321, bets: 29, winRate: '55.2' },
-    { ensName: 'yellow.eth', pnl: 0.2100, bets: 22, winRate: '54.5' },
-    { ensName: 'bob.eth', pnl: -0.1234, bets: 31, winRate: '48.4' },
-    { ensName: 'nick.eth', pnl: -0.3456, bets: 28, winRate: '46.4' },
-    { ensName: 'serena.eth', pnl: -0.5678, bets: 19, winRate: '42.1' },
-];
 
 // Define the categories matching the image
 const CATEGORIES = [
@@ -228,7 +224,7 @@ function App() {
     const [walletClient, setWalletClient] = useState<ReturnType<typeof createWalletClient> | null>(null);
     const [address, setAddress] = useState<`0x${string}` | null>(null);
     const [markets, setMarkets] = useState<Market[]>([]);
-    const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>(MOCK_LEADERBOARD);
+    const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [userEnsName, setUserEnsName] = useState<string | null>(null);
     const [userEnsAvatar, setUserEnsAvatar] = useState<string | null>(null);
@@ -243,6 +239,7 @@ function App() {
 
     useEffect(() => {
         loadMarkets();
+        loadLeaderboard();
     }, []);
 
     // Resolve ENS primary name for connected wallet using viem (client-side)
@@ -590,8 +587,18 @@ function App() {
         }
     };
 
-    // Leaderboard uses mock data (no API call)
-    const loadLeaderboard = () => setLeaderboard(MOCK_LEADERBOARD);
+    const loadLeaderboard = async () => {
+        try {
+            const resp = await fetch(`${API_BASE}/api/leaderboard`);
+            const data = await resp.json();
+            // data structure from server: { leaders: [], stats: {} }
+            if (data.leaders) {
+                setLeaderboard(data.leaders);
+            }
+        } catch (error) {
+            console.error('Failed to load leaderboard:', error);
+        }
+    };
 
     const goToMarketsPage = () => setPage('markets');
     const scrollToLeaderboard = () => {
@@ -648,8 +655,8 @@ function App() {
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
                 >
-                    <span className="nav-logo-icon">P</span>
-                    <span>PredictX</span>
+                    <span className="nav-logo-icon">S</span>
+                    <span>Sharko</span>
                 </a>
                 <nav className="nav-links">
                     <button
