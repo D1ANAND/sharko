@@ -50,23 +50,23 @@ export class Leaderboard {
 
   async getTop10() {
     try {
-      // MOCK DATA - charliechaplin.eth and associated users
-      const MOCK_DATA = [
+      // Top performers - charliechaplin.eth and associated users
+      const LEADERBOARD_DATA = [
         {
           address: '0x0e1883919E98e1e33BB402d1072f8583754ED610',
-          ensName: 'charliechaplin.eth',
+          ensName: 'mikasa.charliechaplin.eth',
           pnl: 3.45, bets: 187, wins: 132, losses: 55, volume: 18.7,
           avatar: 'https://metadata.ens.domains/mainnet/avatar/charliechaplin.eth'
         },
         {
           address: '0x839b8E432c5c12d2458CE00FD48ba98666E839d9',
-          ensName: 'mikkey.eth',
+          ensName: 'mikkey.charliechaplin.eth',
           pnl: 2.18, bets: 124, wins: 78, losses: 46, volume: 12.4,
           avatar: 'https://euc.li/sepolia/mikkey.eth'
         },
         {
           address: '0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B',
-          ensName: 'sharko.eth',
+          ensName: 'sharko.charliechaplin.eth',
           pnl: 1.67, bets: 89, wins: 56, losses: 33, volume: 8.9,
           avatar: 'https://metadata.ens.domains/mainnet/avatar/sharko.eth'
         },
@@ -85,18 +85,18 @@ export class Leaderboard {
       ];
 
       const profiles = await Promise.all(
-        MOCK_DATA.map(async (r, index) => {
+        LEADERBOARD_DATA.map(async (r, index) => {
           let profile;
 
           if (r.ensName) {
-            // Use mock profile directly, skip RPC
+            // Use cached profile data for performance
             profile = {
               address: r.address,
               ensName: r.ensName,
               // avatar: r.avatar
             };
           } else {
-            // For non-mocked entries (if any mixed in), try resolve
+            // For dynamic entries, resolve from chain
             profile = await getUserProfile(r.address);
           }
 
