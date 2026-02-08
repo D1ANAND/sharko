@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     createWalletClient,
     custom,
@@ -23,13 +23,174 @@ const ABI = parseAbi([
     'function getBalance(address user) view returns (uint256)',
 ]);
 
+// --- Landing Page Components ---
+
+const Hero = ({
+    isSessionActive,
+    onStartPredicting,
+    onWatchDemo,
+}: {
+    isSessionActive: boolean;
+    onStartPredicting: () => void;
+    onWatchDemo: () => void;
+}) => (
+    <section className="hero">
+        <div className="hero-bg" aria-hidden="true" />
+        <div className="hero-status">
+            <span>Powered by Yellow Network State Channels</span>
+            <span className="hero-status-dot" data-connected={isSessionActive} />
+            <span>Yellow: {isSessionActive ? 'connected' : 'disconnected'}</span>
+        </div>
+        <h1 className="hero-title">
+            Predict the Future,<br />
+            <span className="hero-title-accent">Earn Rewards</span>
+        </h1>
+        <p className="hero-subtitle">
+            Decentralized prediction marketplace with instant finality, zero gas fees, and cryptographic security powered by ERC-7824 state channels.
+        </p>
+        <div className="hero-ctas">
+            <button type="button" className="btn-primary" onClick={onStartPredicting}>
+                Start Predicting
+            </button>
+            <button type="button" className="btn-secondary" onClick={onWatchDemo}>
+                Watch Demo
+            </button>
+        </div>
+    </section>
+);
+
+const FEATURES = [
+    { title: 'Instant Finality', description: 'Predictions settle instantly off-chain with cryptographic security guarantees using ERC-7824 state channels.', icon: '⚡' },
+    { title: 'Zero Gas Fees', description: 'Make unlimited predictions without gas costs. Only pay for final tournament settlements on-chain.', icon: '🛡️' },
+    { title: 'Trustless Security', description: 'All predictions are cryptographically signed and verifiable with blockchain-level security.', icon: '🔐' },
+];
+
+const Features = () => (
+    <section className="features">
+        <h2 className="features-title">Powered by Yellow Network</h2>
+        <p className="features-subtitle">
+            Built on cutting-edge state channel technology for instant, gasless predictions
+        </p>
+        <div className="features-grid">
+            {FEATURES.map((f) => (
+                <div key={f.title} className="feature-card">
+                    <div className="feature-icon">{f.icon}</div>
+                    <h3 className="feature-title">{f.title}</h3>
+                    <p className="feature-desc">{f.description}</p>
+                </div>
+            ))}
+        </div>
+    </section>
+);
+
+const HOW_IT_WORKS = [
+    { step: 1, title: 'Connect & Deposit', desc: 'Connect your wallet and fund your state channel with ETH. No gas fees for placing predictions.' },
+    { step: 2, title: 'Choose Markets', desc: 'Browse live prediction markets across sports, politics, crypto, and more. Pick your side.' },
+    { step: 3, title: 'Predict Instantly', desc: 'Place YES or NO bets that settle off-chain in real time with cryptographic guarantees.' },
+    { step: 4, title: 'Withdraw Anytime', desc: 'Close your channel and withdraw your balance back to your wallet whenever you want.' },
+];
+
+const HowItWorks = () => (
+    <section className="how-it-works">
+        <h2 className="section-title">How It Works</h2>
+        <p className="section-subtitle">
+            Get started in four simple steps. No complex setup—just connect, deposit, and predict.
+        </p>
+        <div className="steps-grid">
+            {HOW_IT_WORKS.map(({ step, title, desc }) => (
+                <div key={step} className="step-card">
+                    <span className="step-number">{step}</span>
+                    <h3 className="step-title">{title}</h3>
+                    <p className="step-desc">{desc}</p>
+                </div>
+            ))}
+        </div>
+    </section>
+);
+
+const STATS = [
+    { value: '10k+', label: 'Active Predictors' },
+    { value: '500+', label: 'Live Markets' },
+    { value: 'Zero', label: 'Gas on Predictions' },
+];
+
+const Stats = () => (
+    <section className="stats-strip">
+        <div className="stats-inner">
+            {STATS.map(({ value, label }) => (
+                <div key={label} className="stat-item">
+                    <span className="stat-value">{value}</span>
+                    <span className="stat-label">{label}</span>
+                </div>
+            ))}
+        </div>
+    </section>
+);
+
+const CtaBlock = ({ onGoToMarkets }: { onGoToMarkets: () => void }) => (
+    <section className="cta-block">
+        <h2 className="cta-title">Ready to predict?</h2>
+        <p className="cta-subtitle">Join thousands of users making instant, gasless predictions on real-world events.</p>
+        <button type="button" className="btn-primary cta-btn" onClick={onGoToMarkets}>
+            Go to Markets
+        </button>
+    </section>
+);
+
+const Footer = ({ onGoToMarkets, onGoToLeaderboard }: { onGoToMarkets: () => void; onGoToLeaderboard: () => void }) => (
+    <footer className="footer">
+        <div className="footer-inner">
+            <div className="footer-brand">
+                <div className="footer-logo">
+                    <span className="footer-logo-icon">P</span>
+                    <span className="footer-logo-text">PredictX</span>
+                </div>
+                <p className="footer-desc">
+                    The future of decentralized prediction markets, powered by Yellow Network&apos;s state channel technology.
+                </p>
+            </div>
+            <div className="footer-links">
+                <div className="footer-col">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><button type="button" className="footer-link" onClick={onGoToMarkets}>Markets</button></li>
+                        <li><a href="#" className="footer-link">Tournaments</a></li>
+                        <li><button type="button" className="footer-link" onClick={onGoToLeaderboard}>Leaderboard</button></li>
+                        <li><a href="#" className="footer-link">Analytics</a></li>
+                    </ul>
+                </div>
+                <div className="footer-col">
+                    <h4>Developers</h4>
+                    <ul>
+                        <li><a href="#" className="footer-link">Documentation</a></li>
+                        <li><a href="#" className="footer-link">Nitrolite SDK</a></li>
+                        <li><a href="#" className="footer-link">API Reference</a></li>
+                        <li><a href="#" className="footer-link">GitHub</a></li>
+                    </ul>
+                </div>
+                <div className="footer-col">
+                    <h4>Resources</h4>
+                    <ul>
+                        <li><a href="#" className="footer-link">Blog</a></li>
+                        <li><a href="#" className="footer-link">Help Center</a></li>
+                        <li><a href="#" className="footer-link">Community</a></li>
+                        <li><a href="#" className="footer-link">Status</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </footer>
+);
+
 interface Market {
     id: string;
     question: string;
     probability: number;
     volume: number;
     isResolved: boolean;
+    groupSlugs?: string[]; // Add optional groupSlugs
 }
+
 
 interface LeaderboardEntry {
     ensName: string;
@@ -38,7 +199,14 @@ interface LeaderboardEntry {
     winRate: string;
 }
 
+// Define the categories matching the image
+const CATEGORIES = [
+    'All', 'Politics', 'Technology', 'Sports', 'Culture', 
+    'Business', 'Fun', 'Super Bowl', 'Football', 'World', 'Sports Betting'
+];
+
 function App() {
+    const [page, setPage] = useState<'landing' | 'markets'>('landing');
     const [walletClient, setWalletClient] = useState<ReturnType<typeof createWalletClient> | null>(null);
     const [address, setAddress] = useState<`0x${string}` | null>(null);
     const [markets, setMarkets] = useState<Market[]>([]);
@@ -48,6 +216,10 @@ function App() {
     // Yellow Network state channel session
     const [sessionId, setSessionId] = useState<string | null>(null);
     const [sessionBalance, setSessionBalance] = useState<number>(0);
+    const [selectedCategory, setSelectedCategory] = useState('All');
+
+    const leaderboardRef = useRef<HTMLDivElement>(null);
+    const scrollToLeaderboardAfterNav = useRef(false);
 
     useEffect(() => {
         loadMarkets();
@@ -339,129 +511,216 @@ function App() {
         }
     };
 
+    const goToMarketsPage = () => setPage('markets');
+    const scrollToLeaderboard = () => {
+        if (page === 'markets') {
+            leaderboardRef.current?.scrollIntoView({ behavior: 'smooth' });
+        } else {
+            scrollToLeaderboardAfterNav.current = true;
+            setPage('markets');
+        }
+    };
+
+    useEffect(() => {
+        if (page === 'markets' && scrollToLeaderboardAfterNav.current) {
+            scrollToLeaderboardAfterNav.current = false;
+            setTimeout(() => leaderboardRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+        }
+    }, [page]);
+
+    const handleStartPredicting = () => {
+        goToMarketsPage();
+        if (!address) connectWallet();
+    };
+    const handleWatchDemo = () => goToMarketsPage();
+
+    const filteredMarkets = markets.filter(m => {
+        if (selectedCategory === 'All') return true;
+        const search = selectedCategory.toLowerCase();
+        const q = m.question.toLowerCase();
+
+        // Match by group slugs if API provides them
+        if (m.groupSlugs?.length && m.groupSlugs.some(slug => slug.replace(/-/g, ' ').includes(search))) return true;
+        // Match full phrase in question
+        if (q.includes(search)) return true;
+        // Match any word in multi-word categories (e.g. "Sports Betting" → "sports" or "betting")
+        const words = search.split(/\s+/).filter(Boolean);
+        if (words.some(word => word.length > 1 && q.includes(word))) return true;
+        return false;
+    });
+
+    // When a category returns no results, show all markets so something always renders
+    const displayMarkets = filteredMarkets.length > 0 ? filteredMarkets : markets;
+    const showFilterFallback = selectedCategory !== 'All' && filteredMarkets.length === 0;
+
+
     return (
-        <div className="container">
-            <header>
-                <h1>🟡 Yellow Predictions</h1>
-                <div>
+        <div className="app">
+            <header className="nav">
+                <a
+                    href="#"
+                    className="nav-logo"
+                    onClick={(e) => {
+                        e.preventDefault();
+                        setPage('landing');
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                >
+                    <span className="nav-logo-icon">P</span>
+                    <span>PredictX</span>
+                </a>
+                <nav className="nav-links">
+                    <button
+                        type="button"
+                        className={`nav-link ${page === 'markets' ? 'active' : ''}`}
+                        onClick={() => setPage('markets')}
+                    >
+                        Markets
+                    </button>
+                    <button type="button" className="nav-link" onClick={scrollToLeaderboard}>
+                        Leaderboard
+                    </button>
+                </nav>
+                <div className="nav-actions">
+                    {sessionId && (
+                        <div className="nav-channel-badge">
+                            ⚡ Channel: {sessionBalance.toFixed(4)} ETH
+                        </div>
+                    )}
                     {!address ? (
-                        <button onClick={connectWallet}>Connect Wallet</button>
+                        <button type="button" className="btn-primary btn-nav" onClick={connectWallet}>
+                            Connect Wallet
+                        </button>
                     ) : (
-                        <span className="user-info">
-                            {address.slice(0, 6)}...{address.slice(-4)}
-                        </span>
+                        <div className="nav-wallet">
+                            <span className="user-info">{address.slice(0, 6)}...{address.slice(-4)}</span>
+                            {sessionId && (
+                                <button type="button" className="btn-outline-danger" onClick={closeSession}>
+                                    Withdraw
+                                </button>
+                            )}
+                        </div>
                     )}
                 </div>
             </header>
 
-            {sessionId && (
-                <div style={{
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    padding: '20px',
-                    borderRadius: '12px',
-                    margin: '20px 0',
-                    color: 'white',
-                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                }}>
-                    <h3 style={{ margin: '0 0 10px 0', fontSize: '20px' }}>🟡 Active Yellow Session</h3>
-                    <p style={{ margin: '5px 0', fontSize: '18px', fontWeight: 'bold' }}>
-                        Balance: {sessionBalance.toFixed(4)} ETH
-                    </p>
-                    <p style={{ margin: '5px 0', fontSize: '14px', opacity: 0.9 }}>
-                        ⚡ Place bets with NO GAS FEES via Yellow Network!
-                    </p>
-                    <button
-                        onClick={closeSession}
-                        style={{
-                            marginTop: '10px',
-                            padding: '10px 20px',
-                            background: 'rgba(255,255,255,0.2)',
-                            border: '2px solid white',
-                            borderRadius: '8px',
-                            color: 'white',
-                            cursor: 'pointer',
-                            fontWeight: 'bold',
-                            fontSize: '14px',
-                        }}
-                    >
-                        End Session & Withdraw
-                    </button>
-                </div>
+            {page === 'landing' && (
+                <>
+                    <Hero
+                        isSessionActive={!!sessionId}
+                        onStartPredicting={handleStartPredicting}
+                        onWatchDemo={handleWatchDemo}
+                    />
+                    <Features />
+                    <HowItWorks />
+                    <Stats />
+                    <CtaBlock onGoToMarkets={goToMarketsPage} />
+                    <Footer onGoToMarkets={goToMarketsPage} onGoToLeaderboard={scrollToLeaderboard} />
+                </>
             )}
 
-            <div id="markets-section">
-                <h2>Live Markets</h2>
-                <div className="markets">
-                    {loading ? (
-                        <div className="loading">Loading markets...</div>
-                    ) : markets.length === 0 ? (
-                        <div className="loading">No markets available</div>
-                    ) : (
-                        markets.map((m) => (
-                            <div key={m.id} className="market">
-                                <h3>{m.question}</h3>
-                                <div className="market-stats">
-                                    <span>📊 {(m.probability * 100).toFixed(0)}%</span>
-                                    <span>💰 ${m.volume.toFixed(0)}</span>
-                                </div>
-                                <div className="bet-buttons">
-                                    <button
-                                        className="bet-yes"
-                                        onClick={() => placeBet(m.id, true)}
-                                        disabled={!sessionId || sessionBalance < 0.001}
-                                    >
-                                        YES 0.001 ETH {sessionId && '⚡'}
-                                    </button>
-                                    <button
-                                        className="bet-no"
-                                        onClick={() => placeBet(m.id, false)}
-                                        disabled={!sessionId || sessionBalance < 0.001}
-                                    >
-                                        NO 0.001 ETH {sessionId && '⚡'}
-                                    </button>
-                                </div>
+            {page === 'markets' && (
+                <div className="markets-page">
+                    <div className="container">
+                        {sessionId && (
+                            <div className="session-banner">
+                                <h3>🟡 Active Yellow Session</h3>
+                                <p className="session-balance">Balance: {sessionBalance.toFixed(4)} ETH</p>
+                                <p className="session-desc">⚡ Place bets with NO GAS FEES via Yellow Network!</p>
+                                <button type="button" className="btn-secondary session-close" onClick={closeSession}>
+                                    End Session & Withdraw
+                                </button>
                             </div>
-                        ))
-                    )}
-                </div>
-            </div>
-
-            <div className="leaderboard">
-                <h2>🏆 Leaderboard</h2>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Rank</th>
-                            <th>Player</th>
-                            <th>PnL</th>
-                            <th>Bets</th>
-                            <th>Win Rate</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {leaderboard.length === 0 ? (
-                            <tr>
-                                <td colSpan={5} className="loading">
-                                    Loading...
-                                </td>
-                            </tr>
-                        ) : (
-                            leaderboard.map((l, i) => (
-                                <tr key={i}>
-                                    <td className="rank">#{i + 1}</td>
-                                    <td>{l.ensName}</td>
-                                    <td style={{ color: l.pnl > 0 ? '#10b981' : '#ef4444' }}>
-                                        {l.pnl > 0 ? '+' : ''}
-                                        {l.pnl.toFixed(4)} ETH
-                                    </td>
-                                    <td>{l.bets}</td>
-                                    <td>{l.winRate}%</td>
-                                </tr>
-                            ))
                         )}
-                    </tbody>
-                </table>
-            </div>
+                        <div className="markets-section">
+                            <h1 className="markets-page-title">Live Markets</h1>
+                            <div className="filter-bar">
+                                {CATEGORIES.map(cat => (
+                                    <button
+                                        key={cat}
+                                        className={`filter-btn ${selectedCategory === cat ? 'active' : ''}`}
+                                        onClick={() => setSelectedCategory(cat)}
+                                    >
+                                        {cat}
+                                    </button>
+                                ))}
+                            </div>
+                            {showFilterFallback && (
+                                <p className="filter-fallback-msg">No markets found for &quot;{selectedCategory}&quot;. Showing all markets.</p>
+                            )}
+                            <div className="markets">
+                                {loading ? (
+                                    <div className="loading">Loading markets...</div>
+                                ) : displayMarkets.length === 0 ? (
+                                    <div className="loading">No markets available.</div>
+                                ) : (
+                                    displayMarkets.map((m) => (
+                                        <div key={m.id} className="market">
+                                            <h3>{m.question}</h3>
+                                            <div className="market-stats">
+                                                <span>📊 {(m.probability * 100).toFixed(0)}%</span>
+                                                <span>💰 ${m.volume.toFixed(0)}</span>
+                                            </div>
+                                            <div className="bet-buttons">
+                                                <button
+                                                    className="bet-yes"
+                                                    onClick={() => placeBet(m.id, true)}
+                                                    disabled={!sessionId || sessionBalance < 0.001}
+                                                >
+                                                    YES 0.001 ETH {sessionId && '⚡'}
+                                                </button>
+                                                <button
+                                                    className="bet-no"
+                                                    onClick={() => placeBet(m.id, false)}
+                                                    disabled={!sessionId || sessionBalance < 0.001}
+                                                >
+                                                    NO 0.001 ETH {sessionId && '⚡'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                        <div id="leaderboard" className="leaderboard" ref={leaderboardRef}>
+                            <h2>🏆 Leaderboard</h2>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Rank</th>
+                                        <th>Player</th>
+                                        <th>PnL</th>
+                                        <th>Bets</th>
+                                        <th>Win Rate</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {leaderboard.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={5} className="loading">
+                                                Loading...
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        leaderboard.map((l, i) => (
+                                            <tr key={i}>
+                                                <td className="rank">#{i + 1}</td>
+                                                <td>{l.ensName}</td>
+                                                <td className={l.pnl > 0 ? 'pnl-positive' : 'pnl-negative'}>
+                                                    {l.pnl > 0 ? '+' : ''}
+                                                    {l.pnl.toFixed(4)} ETH
+                                                </td>
+                                                <td>{l.bets}</td>
+                                                <td>{l.winRate}%</td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

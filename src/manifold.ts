@@ -7,7 +7,9 @@ export interface ManifoldMarket {
   resolution?: string;
   resolutionTime?: number;
   url: string;
+  groupSlugs?: string[]; // Add this field
 }
+
 
 export async function getMarkets(): Promise<ManifoldMarket[]> {
   try {
@@ -41,7 +43,8 @@ export async function getMarkets(): Promise<ManifoldMarket[]> {
       isResolved: m.isResolved || false,
       resolution: m.resolution,
       resolutionTime: m.resolutionTime,
-      url: m.url
+      url: m.url,
+      groupSlugs: m.groupSlugs || [] // Map the group slugs
     }));
   } catch (error) {
     console.error('Manifold API error:', error);
