@@ -5,6 +5,7 @@ import { parseAbi, parseAbiItem, keccak256, toHex, parseEther } from 'viem';
 import { publicClient, walletClient } from './chain';
 import { getMarkets, getMarketResolution } from './manifold';
 import { leaderboard } from './leaderboard';
+import { getUserProfile } from './ens';
 import { yellowClient } from './yellow';
 import { supabase } from './supabase';
 import { sessionManager } from './session';
@@ -305,6 +306,21 @@ app.post('/api/settle/:marketId', async (req, res) => {
     });
   } catch (error) {
     console.error('Settlement error:', error);
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// ENS profile (L1 mainnet resolution; works for Sepolia/Mainnet addresses)
+app.get('/api/ens/profile', async (req, res) => {
+  try {
+    const address = (req.query.address as string)?.toLowerCase();
+    if (!address || !/^0x[a-fA-F0-9]{40}$/.test(address)) {
+      return res.status(400).json({ error: 'Valid address query required' });
+    }
+    const chainId = req.query.chainId != null ? Number(req.query.chainId) : undefined;
+    const profile = await getUserProfile(address, chainId != null && !Number.isNaN(chainId) ? { chainId } : undefined);
+    res.json(profile);
+  } catch (error) {
     res.status(500).json({ error: (error as Error).message });
   }
 });

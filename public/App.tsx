@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
     createWalletClient,
+    createPublicClient,
+    http,
     custom,
     parseEther,
     parseAbi,
@@ -8,12 +10,12 @@ import {
     keccak256,
     toHex,
 } from 'viem';
-import { sepolia } from 'viem/chains';
+import { sepolia, mainnet } from 'viem/chains';
 
 const API_BASE = 'http://localhost:3001'; // backend PORT = 3001
 
 // Copy the same address you have in CUSTODY_ADDRESS in your .env
-const CUSTODY = '0x4bA6e7b6ecFDc54d5C56B1f764a261D5F2BFb8da' as `0x${string}`;
+const CUSTODY = '0x2F4629D3D04B98ABa5d559fa67783C064484c0E2' as `0x${string}`;
 
 const ABI = parseAbi([
     'function deposit() payable',
@@ -194,14 +196,30 @@ interface Market {
 
 interface LeaderboardEntry {
     ensName: string;
+    avatar?: string;
+    address?: string;
     pnl: number;
     bets: number;
     winRate: string;
 }
 
+// Mock leaderboard data
+const MOCK_LEADERBOARD: LeaderboardEntry[] = [
+    { ensName: 'vitalik.eth', pnl: 2.4521, bets: 89, winRate: '67.4' },
+    { ensName: 'alice.eth', pnl: 1.8234, bets: 64, winRate: '62.5' },
+    { ensName: 'crypto.eth', pnl: 1.2100, bets: 52, winRate: '59.6' },
+    { ensName: 'predictor.eth', pnl: 0.9876, bets: 41, winRate: '58.5' },
+    { ensName: 'degen.eth', pnl: 0.6543, bets: 38, winRate: '55.3' },
+    { ensName: 'wagmi.eth', pnl: 0.4321, bets: 29, winRate: '55.2' },
+    { ensName: 'yellow.eth', pnl: 0.2100, bets: 22, winRate: '54.5' },
+    { ensName: 'bob.eth', pnl: -0.1234, bets: 31, winRate: '48.4' },
+    { ensName: 'nick.eth', pnl: -0.3456, bets: 28, winRate: '46.4' },
+    { ensName: 'serena.eth', pnl: -0.5678, bets: 19, winRate: '42.1' },
+];
+
 // Define the categories matching the image
 const CATEGORIES = [
-    'All', 'Politics', 'Technology', 'Sports', 'Culture', 
+    'All', 'Politics', 'Technology', 'Sports', 'Culture',
     'Business', 'Fun', 'Super Bowl', 'Football', 'World', 'Sports Betting'
 ];
 
@@ -210,8 +228,10 @@ function App() {
     const [walletClient, setWalletClient] = useState<ReturnType<typeof createWalletClient> | null>(null);
     const [address, setAddress] = useState<`0x${string}` | null>(null);
     const [markets, setMarkets] = useState<Market[]>([]);
-    const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+    const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>(MOCK_LEADERBOARD);
     const [loading, setLoading] = useState(true);
+    const [userEnsName, setUserEnsName] = useState<string | null>(null);
+    const [userEnsAvatar, setUserEnsAvatar] = useState<string | null>(null);
 
     // Yellow Network state channel session
     const [sessionId, setSessionId] = useState<string | null>(null);
@@ -223,10 +243,79 @@ function App() {
 
     useEffect(() => {
         loadMarkets();
-        loadLeaderboard();
-        const interval = setInterval(loadLeaderboard, 30000);
-        return () => clearInterval(interval);
     }, []);
+
+    // Resolve ENS primary name for connected wallet using viem (client-side)
+    useEffect(() => {
+        if (!address) {
+            setUserEnsName(null);
+            setUserEnsAvatar(null);
+            return;
+        }
+        let cancelled = false;
+        (async () => {
+            try {
+                console.log('🔍 Resolving ENS for address:', address);
+
+                // Create a public client for Sepolia testnet to resolve ENS
+                // Using Alchemy's Sepolia RPC endpoint
+                const publicClient = createPublicClient({
+                    chain: sepolia,
+                    transport: http('https://eth-sepolia.g.alchemy.com/v2/PuciTLIfFiQrrhuVIkGAm'),
+                });
+
+                // Get ENS name from Sepolia (reverse resolution)
+                let ensName = await publicClient.getEnsName({
+                    address: address,
+                });
+
+                console.log('✅ ENS reverse resolution result:', ensName || 'No primary name set');
+
+                // If reverse resolution fails, try forward resolution for known name
+                if (!ensName) {
+                    console.log('🔄 Trying forward resolution for mikkey.eth...');
+                    try {
+                        const resolvedAddress = await publicClient.getEnsAddress({
+                            name: 'mikkey.eth',
+                        });
+                        console.log('📍 mikkey.eth resolves to:', resolvedAddress);
+
+                        // If mikkey.eth points to this address, use it
+                        if (resolvedAddress?.toLowerCase() === address.toLowerCase()) {
+                            console.log('✅ Found matching ENS name: mikkey.eth');
+                            ensName = 'mikkey.eth';
+                        }
+                    } catch (err) {
+                        console.log('⚠️ Forward resolution failed:', err);
+                    }
+                }
+
+                if (cancelled) return;
+                setUserEnsName(ensName);
+
+                // If we have an ENS name, fetch the avatar
+                if (ensName) {
+                    console.log('🖼️ Fetching avatar for:', ensName);
+                    const ensAvatar = await publicClient.getEnsAvatar({
+                        name: ensName,
+                    });
+                    console.log('✅ Avatar resolved:', ensAvatar || 'No avatar found');
+                    if (!cancelled) {
+                        setUserEnsAvatar(ensAvatar);
+                    }
+                } else {
+                    setUserEnsAvatar(null);
+                }
+            } catch (error) {
+                console.error('❌ ENS resolution error:', error);
+                if (!cancelled) {
+                    setUserEnsName(null);
+                    setUserEnsAvatar(null);
+                }
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [address]);
 
     const connectWallet = async () => {
         const ethereum = (window as any).ethereum;
@@ -501,15 +590,8 @@ function App() {
         }
     };
 
-    const loadLeaderboard = async () => {
-        try {
-            const resp = await fetch(`${API_BASE}/api/leaderboard`);
-            const data = await resp.json();
-            setLeaderboard(data.leaders || []);
-        } catch (error) {
-            console.error('Failed to load leaderboard:', error);
-        }
-    };
+    // Leaderboard uses mock data (no API call)
+    const loadLeaderboard = () => setLeaderboard(MOCK_LEADERBOARD);
 
     const goToMarketsPage = () => setPage('markets');
     const scrollToLeaderboard = () => {
@@ -592,8 +674,15 @@ function App() {
                             Connect Wallet
                         </button>
                     ) : (
-                        <div className="nav-wallet">
-                            <span className="user-info">{address.slice(0, 6)}...{address.slice(-4)}</span>
+                        <div className="nav-wallet nav-wallet-ens">
+                            {userEnsAvatar && (
+                                <img src={userEnsAvatar} alt="" className="nav-wallet-avatar" />
+                            )}
+                            <div className="user-info-wrap">
+                                <span className="user-info user-info-name">
+                                    {userEnsName && !userEnsName.includes('...') ? userEnsName : address.slice(0, 6) + '...' + address.slice(-4)}
+                                </span>
+                            </div>
                             {sessionId && (
                                 <button type="button" className="btn-outline-danger" onClick={closeSession}>
                                     Withdraw
@@ -703,9 +792,12 @@ function App() {
                                         </tr>
                                     ) : (
                                         leaderboard.map((l, i) => (
-                                            <tr key={i}>
+                                            <tr key={l.address ?? i}>
                                                 <td className="rank">#{i + 1}</td>
-                                                <td>{l.ensName}</td>
+                                                <td className="leaderboard-player">
+                                                    {l.avatar && <img src={l.avatar} alt="" className="leaderboard-avatar" />}
+                                                    <span>{l.ensName}</span>
+                                                </td>
                                                 <td className={l.pnl > 0 ? 'pnl-positive' : 'pnl-negative'}>
                                                     {l.pnl > 0 ? '+' : ''}
                                                     {l.pnl.toFixed(4)} ETH

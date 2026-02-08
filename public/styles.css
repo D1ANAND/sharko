@@ -182,6 +182,42 @@ body {
   gap: 10px;
 }
 
+.nav-wallet-ens {
+  gap: 10px;
+}
+
+.nav-wallet-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--black-border);
+}
+
+.user-info-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.user-info-name {
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-weight: 600;
+  font-family: inherit;
+}
+
+.user-info-address {
+  padding: 0;
+  background: transparent;
+  border: none;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
 .btn-primary {
   background: var(--yellow);
   color: var(--black);
@@ -806,6 +842,20 @@ body {
   padding: 1rem 1.25rem;
   border-top: 1px solid var(--black-border);
   font-size: 0.95rem;
+}
+
+.leaderboard-player {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.leaderboard-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--black-border);
 }
 
 .leaderboard tbody tr {
