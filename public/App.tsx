@@ -625,16 +625,42 @@ function App() {
 
     const filteredMarkets = markets.filter(m => {
         if (selectedCategory === 'All') return true;
+
         const search = selectedCategory.toLowerCase();
         const q = m.question.toLowerCase();
 
         // Match by group slugs if API provides them
-        if (m.groupSlugs?.length && m.groupSlugs.some(slug => slug.replace(/-/g, ' ').includes(search))) return true;
+        if (m.groupSlugs?.length) {
+            const hasGroupMatch = m.groupSlugs.some(slug => {
+                const normalizedSlug = slug.replace(/-/g, ' ').toLowerCase();
+                // Check if the slug contains the search term or vice versa
+                return normalizedSlug.includes(search) || search.includes(normalizedSlug);
+            });
+            if (hasGroupMatch) return true;
+        }
+
         // Match full phrase in question
         if (q.includes(search)) return true;
+
         // Match any word in multi-word categories (e.g. "Sports Betting" → "sports" or "betting")
         const words = search.split(/\s+/).filter(Boolean);
         if (words.some(word => word.length > 1 && q.includes(word))) return true;
+
+        // Special category mappings for better matching
+        const categoryMappings: Record<string, string[]> = {
+            'politics': ['election', 'president', 'congress', 'senate', 'vote', 'political', 'democrat', 'republican', 'biden', 'trump'],
+            'technology': ['tech', 'ai', 'software', 'computer', 'crypto', 'bitcoin', 'ethereum', 'apple', 'google', 'meta', 'tesla'],
+            'sports': ['nfl', 'nba', 'mlb', 'nhl', 'soccer', 'football', 'basketball', 'baseball', 'hockey', 'game', 'championship', 'super bowl'],
+            'culture': ['movie', 'film', 'music', 'celebrity', 'entertainment', 'award', 'oscar', 'grammy'],
+            'business': ['stock', 'market', 'economy', 'company', 'revenue', 'profit', 'ceo', 'ipo'],
+            'super bowl': ['super bowl', 'superbowl', 'nfl championship'],
+            'football': ['nfl', 'football', 'quarterback', 'touchdown'],
+            'sports betting': ['bet', 'odds', 'spread', 'over', 'under']
+        };
+
+        const mappedKeywords = categoryMappings[search] || [];
+        if (mappedKeywords.some(keyword => q.includes(keyword))) return true;
+
         return false;
     });
 
