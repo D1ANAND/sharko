@@ -12,7 +12,7 @@ import {
 } from 'viem';
 import { sepolia, mainnet } from 'viem/chains';
 
-const API_BASE = 'https://hell-2.onrender.com/'; // backend PORT = 3001
+const API_BASE = 'https://hell-2.onrender.com'; // backend PORT = 3001
 
 // Copy the same address you have in CUSTODY_ADDRESS in your .env
 const CUSTODY = '0x2F4629D3D04B98ABa5d559fa67783C064484c0E2' as `0x${string}`;
