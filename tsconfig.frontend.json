@@ -20,7 +20,6 @@
         ]
     },
     "include": [
-        "public/**/*",
-        "public/vite-env.d.ts"
+        "public/**/*"
     ]
 }
