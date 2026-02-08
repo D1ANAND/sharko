@@ -743,106 +743,156 @@ function App() {
 
             {page === 'markets' && (
                 <div className="markets-page">
+                    <div className="markets-page-bg" aria-hidden="true" />
                     <div className="container">
                         {sessionId && (
                             <div className="session-banner">
-                                <h3>🟡 Active Yellow Session</h3>
-                                <p className="session-balance">Balance: {sessionBalance.toFixed(4)} ETH</p>
-                                <p className="session-desc">⚡ Place bets with NO GAS FEES via Yellow Network!</p>
-                                <button type="button" className="btn-secondary session-close" onClick={closeSession}>
-                                    End Session & Withdraw
-                                </button>
+                                <div className="session-banner-inner">
+                                    <div className="session-banner-icon">⚡</div>
+                                    <div className="session-banner-content">
+                                        <h3>Active session</h3>
+                                        <p className="session-balance">{sessionBalance.toFixed(4)} ETH</p>
+                                        <p className="session-desc">Place bets with no gas fees</p>
+                                    </div>
+                                    <button type="button" className="btn-secondary session-close" onClick={closeSession}>
+                                        Withdraw
+                                    </button>
+                                </div>
                             </div>
                         )}
                         <div className="markets-section">
-                            <h1 className="markets-page-title">Live Markets</h1>
-                            <div className="filter-bar">
-                                {CATEGORIES.map(cat => (
-                                    <button
-                                        key={cat}
-                                        className={`filter-btn ${selectedCategory === cat ? 'active' : ''}`}
-                                        onClick={() => setSelectedCategory(cat)}
-                                    >
-                                        {cat}
-                                    </button>
-                                ))}
+                            <header className="markets-header">
+                                <h1 className="markets-page-title">Live Markets</h1>
+                                <p className="markets-page-subtitle">Predict outcomes and earn on real-world events</p>
+                            </header>
+                            <div className="filter-bar-wrap">
+                                <div className="filter-bar">
+                                    {CATEGORIES.map(cat => (
+                                        <button
+                                            key={cat}
+                                            type="button"
+                                            className={`filter-btn ${selectedCategory === cat ? 'active' : ''}`}
+                                            onClick={() => setSelectedCategory(cat)}
+                                        >
+                                            {cat}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                             {showFilterFallback && (
-                                <p className="filter-fallback-msg">No markets found for &quot;{selectedCategory}&quot;. Showing all markets.</p>
+                                <p className="filter-fallback-msg">No markets for &quot;{selectedCategory}&quot;. Showing all.</p>
                             )}
                             <div className="markets">
                                 {loading ? (
-                                    <div className="loading">Loading markets...</div>
+                                    <div className="markets-loading">
+                                        <div className="markets-loading-spinner" />
+                                        <p>Loading markets…</p>
+                                    </div>
                                 ) : displayMarkets.length === 0 ? (
-                                    <div className="loading">No markets available.</div>
+                                    <div className="markets-empty">
+                                        <span className="markets-empty-icon">📊</span>
+                                        <p>No markets available</p>
+                                    </div>
                                 ) : (
                                     displayMarkets.map((m) => (
-                                        <div key={m.id} className="market">
-                                            <h3>{m.question}</h3>
-                                            <div className="market-stats">
-                                                <span>📊 {(m.probability * 100).toFixed(0)}%</span>
-                                                <span>💰 ${m.volume.toFixed(0)}</span>
+                                        <article key={m.id} className="market-card">
+                                            <div className="market-card-body">
+                                                <h3 className="market-card-question">{m.question}</h3>
+                                                <div className="market-card-stats">
+                                                    <span className="market-stat market-stat-prob">
+                                                        <span className="market-stat-label">Yes</span>
+                                                        <span className="market-stat-value">{(m.probability * 100).toFixed(0)}%</span>
+                                                    </span>
+                                                    <span className="market-stat market-stat-volume">
+                                                        <span className="market-stat-label">Volume</span>
+                                                        <span className="market-stat-value">${m.volume.toFixed(0)}</span>
+                                                    </span>
+                                                </div>
+                                                <div className="market-card-bar">
+                                                    <div className="market-card-bar-fill" style={{ width: `${m.probability * 100}%` }} />
+                                                </div>
                                             </div>
-                                            <div className="bet-buttons">
+                                            <div className="market-card-actions">
                                                 <button
-                                                    className="bet-yes"
+                                                    type="button"
+                                                    className="market-btn market-btn-yes"
                                                     onClick={() => placeBet(m.id, true)}
                                                     disabled={!sessionId || sessionBalance < 0.001}
                                                 >
-                                                    YES 0.001 ETH {sessionId && '⚡'}
+                                                    <span className="market-btn-label">Yes</span>
+                                                    <span className="market-btn-amount">0.001 ETH</span>
+                                                    {sessionId && <span className="market-btn-badge">⚡</span>}
                                                 </button>
                                                 <button
-                                                    className="bet-no"
+                                                    type="button"
+                                                    className="market-btn market-btn-no"
                                                     onClick={() => placeBet(m.id, false)}
                                                     disabled={!sessionId || sessionBalance < 0.001}
                                                 >
-                                                    NO 0.001 ETH {sessionId && '⚡'}
+                                                    <span className="market-btn-label">No</span>
+                                                    <span className="market-btn-amount">0.001 ETH</span>
+                                                    {sessionId && <span className="market-btn-badge">⚡</span>}
                                                 </button>
                                             </div>
-                                        </div>
+                                        </article>
                                     ))
                                 )}
                             </div>
                         </div>
-                        <div id="leaderboard" className="leaderboard" ref={leaderboardRef}>
-                            <h2>🏆 Leaderboard</h2>
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Rank</th>
-                                        <th>Player</th>
-                                        <th>PnL</th>
-                                        <th>Bets</th>
-                                        <th>Win Rate</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {leaderboard.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={5} className="loading">
-                                                Loading...
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        leaderboard.map((l, i) => (
-                                            <tr key={l.address ?? i}>
-                                                <td className="rank">#{i + 1}</td>
-                                                <td className="leaderboard-player">
-                                                    {l.avatar && <img src={l.avatar} alt="" className="leaderboard-avatar" />}
-                                                    <span>{l.ensName}</span>
-                                                </td>
-                                                <td className={l.pnl > 0 ? 'pnl-positive' : 'pnl-negative'}>
-                                                    {l.pnl > 0 ? '+' : ''}
-                                                    {l.pnl.toFixed(4)} ETH
-                                                </td>
-                                                <td>{l.bets}</td>
-                                                <td>{l.winRate}%</td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
+                        <section id="leaderboard" className="leaderboard-section" ref={leaderboardRef}>
+                            <header className="leaderboard-header">
+                                <span className="leaderboard-icon">🏆</span>
+                                <div>
+                                    <h2 className="leaderboard-title">Leaderboard</h2>
+                                    <p className="leaderboard-subtitle">Top predictors by PnL</p>
+                                </div>
+                            </header>
+                            <div className="leaderboard-card">
+                                {leaderboard.length === 0 ? (
+                                    <div className="leaderboard-loading">
+                                        <div className="leaderboard-loading-spinner" />
+                                        <p>Loading…</p>
+                                    </div>
+                                ) : (
+                                    <div className="leaderboard-table-wrap">
+                                        <table className="leaderboard-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Rank</th>
+                                                    <th>Player</th>
+                                                    <th>PnL</th>
+                                                    <th>Bets</th>
+                                                    <th>Win rate</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {leaderboard.map((l, i) => (
+                                                    <tr key={l.address ?? i} className={i < 3 ? `leaderboard-row leaderboard-row-top leaderboard-row-${i + 1}` : 'leaderboard-row'}>
+                                                        <td className="leaderboard-rank">
+                                                            {i < 3 ? <span className={`leaderboard-medal leaderboard-medal-${i + 1}`}>{i + 1}</span> : `#${i + 1}`}
+                                                        </td>
+                                                        <td className="leaderboard-player">
+                                                            {/* {l.avatar ? <img src={l.avatar} alt="" className="leaderboard-avatar" /> : <span className="leaderboard-avatar-placeholder" />} */}
+                                                            <span className="leaderboard-name">{l.ensName}</span>
+                                                        </td>
+                                                        <td className={l.pnl >= 0 ? 'leaderboard-pnl leaderboard-pnl-positive' : 'leaderboard-pnl leaderboard-pnl-negative'}>
+                                                            {l.pnl >= 0 ? '+' : ''}{l.pnl.toFixed(4)} ETH
+                                                        </td>
+                                                        <td className="leaderboard-bets">{l.bets}</td>
+                                                        <td className="leaderboard-winrate">
+                                                            <span className="leaderboard-winrate-bar-wrap">
+                                                                <span className="leaderboard-winrate-bar" style={{ width: `${l.winRate}%` }} />
+                                                            </span>
+                                                            <span className="leaderboard-winrate-text">{l.winRate}%</span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
+                        </section>
                     </div>
                 </div>
             )}
